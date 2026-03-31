@@ -153,7 +153,11 @@ if [[ "$copy_photos" -eq 1 ]]; then
         fi
       else
         if [[ "$normalize_photos" -eq 1 ]]; then
-          ffmpeg -loglevel error -y -i "$photo" -vf "scale='if(gt(iw,${photo_max_width}),${photo_max_width},iw)':-2" -q:v 2 "$out_file"
+          # Prevent ffmpeg from consuming stdin from the find/read loop.
+          if ! ffmpeg -nostdin -loglevel error -y -i "$photo" -vf "scale='if(gt(iw,${photo_max_width}),${photo_max_width},iw)':-2" -q:v 2 "$out_file" </dev/null; then
+            echo "Warning: failed to normalize photo, skipping: $photo" >&2
+            continue
+          fi
         else
           original_ext="${photo##*.}"
           out_file="${photos_out_dir}/${safe_rel%.*}.${original_ext,,}"
@@ -171,7 +175,7 @@ fi
 if [[ "$sample_videos" -eq 1 ]]; then
   if [[ -d "$video_dir" ]]; then
     while IFS= read -r -d '' video; do
-      duration="$(ffprobe -v error -show_entries format=duration -of default=nokey=1:noprint_wrappers=1 "$video" || true)"
+      duration="$(ffprobe -v error -show_entries format=duration -of default=nokey=1:noprint_wrappers=1 "$video" </dev/null || true)"
       if [[ -z "$duration" ]] || [[ "$duration" == "N/A" ]]; then
         echo "Skipping video with unknown duration: $video"
         continue
@@ -188,7 +192,11 @@ if [[ "$sample_videos" -eq 1 ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
           echo "[dry-run] frame: $video @ ${ts}s -> $out_file"
         else
-          ffmpeg -loglevel error -ss "$ts" -i "$video" -frames:v 1 -q:v 2 "$out_file"
+          # Prevent ffmpeg from consuming stdin from the find/read loop.
+          if ! ffmpeg -nostdin -loglevel error -ss "$ts" -i "$video" -frames:v 1 -q:v 2 "$out_file" </dev/null; then
+            echo "Warning: failed to extract frame, skipping: $video @ ${ts}s" >&2
+            continue
+          fi
           printf '%s,%s,%s,%s\n' "${out_file}" "video_frame" "${video}" "${ts}" >> "$manifest_path"
         fi
         frame_count=$((frame_count + 1))
