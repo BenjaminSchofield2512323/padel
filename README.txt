@@ -34,3 +34,23 @@ Examples
 Notes
 - Downloaded data stays out of git via `.gitignore`.
 - Keep raw videos in S3; keep code/metadata in git.
+
+---
+
+Preparing a first labeling batch (photos + sampled video frames)
+
+1) Ensure raw media exists locally:
+   - photos in `data/raw/photos`
+   - videos in `data/raw/videos`
+
+2) Build a starter annotation batch:
+   `bash scripts/prepare_labeling_data.sh --video-dir data/raw/videos --photo-dir data/raw/photos --out-dir data/labeling_seed --frames-per-video 20`
+
+This creates:
+- `data/labeling_seed/images/photos/` (photos to annotate)
+- `data/labeling_seed/images/video_frames/` (sampled frames to annotate)
+- `data/labeling_seed/manifest.csv` (source tracking for each image)
+
+3) Annotate images in a labeling tool (CVAT or Label Studio), then export in COCO keypoints format if possible.
+
+See `docs/labeling_guide.md` for detailed instructions and recommended keypoints.
