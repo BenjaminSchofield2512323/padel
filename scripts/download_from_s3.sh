@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Support AWS CLI installed with `pip --user`.
+export PATH="${HOME}/.local/bin:${PATH}"
+
 usage() {
   cat <<'EOF'
 Download padel data directly from S3 into local storage.
