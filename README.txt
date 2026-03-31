@@ -54,3 +54,27 @@ This creates:
 3) Annotate images in a labeling tool (CVAT or Label Studio), then export in COCO keypoints format if possible.
 
 See `docs/labeling_guide.md` for detailed instructions and recommended keypoints.
+
+---
+
+Preparing model training for auto-labeling (PadelTracker100 + your data)
+
+1) Install training dependencies:
+   `python3 -m pip install -r requirements-train.txt`
+
+2) Place downloaded PadelTracker100 files under:
+   `data/padeltracker100/`
+   Suggested structure:
+   - `data/padeltracker100/images/` (all frame images)
+   - `data/padeltracker100/annotations/train.json`
+   - `data/padeltracker100/annotations/val.json`
+
+3) Convert COCO keypoints splits into YOLO pose format:
+   `python3 scripts/convert_coco_to_yolo_pose.py --coco-json data/padeltracker100/annotations/train.json --images-root data/padeltracker100/images --out-images-dir data/padeltracker100/yolo_pose/images/train --out-labels-dir data/padeltracker100/yolo_pose/labels/train --copy-images`
+   `python3 scripts/convert_coco_to_yolo_pose.py --coco-json data/padeltracker100/annotations/val.json --images-root data/padeltracker100/images --out-images-dir data/padeltracker100/yolo_pose/images/val --out-labels-dir data/padeltracker100/yolo_pose/labels/val --copy-images`
+
+4) Train first pose teacher model:
+   `bash scripts/train_pose_yolo.sh --data-yaml config/yolo_pose_padel.yaml --model yolo11m-pose.pt --epochs 80 --imgsz 1280 --batch 16 --device 0`
+
+5) Auto-label your unlabeled frames with trained weights:
+   `python3 scripts/autolabel_pose_yolo.py --model runs/padel_pose_teacher/weights/best.pt --images-dir data/labeling_seed/images/video_frames --output-json data/autolabel/preds_coco.json --conf 0.35`

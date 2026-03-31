@@ -1,0 +1,6 @@
+ultralytics
+pycocotools
+opencv-python
+tqdm
+pyyaml
+Pillow
