@@ -12,7 +12,7 @@ Quick start
    `aws sts get-caller-identity`
 
 2) Download footage from S3:
-   `bash scripts/download_from_s3.sh --bucket padeldata --prefix padel-data --dest data/raw --region us-east-1`
+   `bash scripts/download_from_s3.sh --bucket padeldata --prefix data --dest data/raw --region us-east-1`
 
 3) Sync only new/changed files later:
    rerun the same command; `aws s3 sync` is incremental.
@@ -29,7 +29,7 @@ Examples
   `bash scripts/download_from_s3.sh --bucket padeldata --dest data/raw`
 
 - Dry-run before download:
-  `bash scripts/download_from_s3.sh --bucket padeldata --prefix padel-data --dest data/raw --dry-run`
+  `bash scripts/download_from_s3.sh --bucket padeldata --prefix data --dest data/raw --dry-run`
 
 Notes
 - Downloaded data stays out of git via `.gitignore`.
@@ -47,7 +47,7 @@ Preparing a first labeling batch (photos + sampled video frames)
    `bash scripts/prepare_labeling_data.sh --video-dir data/raw/videos --photo-dir data/raw/photos --out-dir data/labeling_seed --frames-per-video 20`
 
 This creates:
-- `data/labeling_seed/images/photos/` (photos to annotate)
+- `data/labeling_seed/images/photos/` (normalized photos to annotate)
 - `data/labeling_seed/images/video_frames/` (sampled frames to annotate)
 - `data/labeling_seed/manifest.csv` (source tracking for each image)
 

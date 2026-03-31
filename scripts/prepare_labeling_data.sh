@@ -13,13 +13,16 @@ Options:
   --photo-dir <path>          Root directory containing photos (default: data/raw/photos)
   --out-dir <path>            Output directory for labeling set (default: data/labeling_seed)
   --frames-per-video <int>    Uniformly sampled frames per video (default: 20)
+  --normalize-photos          Re-encode photos to annotation-safe JPGs (default: on)
+  --no-normalize-photos       Keep original photo encoding/extension
+  --photo-max-width <int>     Max width for normalized photos (default: 2560)
   --skip-photos               Do not copy photos
   --skip-videos               Do not sample video frames
   --dry-run                   Print actions without writing files
   -h, --help                  Show this help message
 
 Environment variable equivalents:
-  VIDEO_DIR, PHOTO_DIR, OUT_DIR, FRAMES_PER_VIDEO
+  VIDEO_DIR, PHOTO_DIR, OUT_DIR, FRAMES_PER_VIDEO, PHOTO_MAX_WIDTH
 EOF
 }
 
@@ -43,8 +46,10 @@ video_dir="${VIDEO_DIR:-data/raw}"
 photo_dir="${PHOTO_DIR:-data/raw/photos}"
 out_dir="${OUT_DIR:-data/labeling_seed}"
 frames_per_video="${FRAMES_PER_VIDEO:-20}"
+photo_max_width="${PHOTO_MAX_WIDTH:-2560}"
 copy_photos=1
 sample_videos=1
+normalize_photos=1
 dry_run=0
 
 while [[ $# -gt 0 ]]; do
@@ -63,6 +68,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     --frames-per-video)
       frames_per_video="$2"
+      shift 2
+      ;;
+    --normalize-photos)
+      normalize_photos=1
+      shift
+      ;;
+    --no-normalize-photos)
+      normalize_photos=0
+      shift
+      ;;
+    --photo-max-width)
+      photo_max_width="$2"
       shift 2
       ;;
     --skip-photos)
@@ -94,9 +111,18 @@ if ! [[ "$frames_per_video" =~ ^[0-9]+$ ]] || [[ "$frames_per_video" -eq 0 ]]; t
   exit 1
 fi
 
-require_cmd ffmpeg
-require_cmd ffprobe
+if ! [[ "$photo_max_width" =~ ^[0-9]+$ ]] || [[ "$photo_max_width" -eq 0 ]]; then
+  echo "Error: --photo-max-width must be a positive integer." >&2
+  exit 1
+fi
+
 require_cmd find
+if [[ "$sample_videos" -eq 1 ]] || [[ "$copy_photos" -eq 1 && "$normalize_photos" -eq 1 ]]; then
+  require_cmd ffmpeg
+fi
+if [[ "$sample_videos" -eq 1 ]]; then
+  require_cmd ffprobe
+fi
 
 images_dir="${out_dir}/images"
 photos_out_dir="${images_dir}/photos"
@@ -117,12 +143,22 @@ if [[ "$copy_photos" -eq 1 ]]; then
     while IFS= read -r -d '' photo; do
       rel="${photo#${photo_dir}/}"
       safe_rel="$(sanitize_relpath "$rel")"
-      ext="${photo##*.}"
-      out_file="${photos_out_dir}/${safe_rel%.*}.${ext,,}"
+      out_file="${photos_out_dir}/${safe_rel%.*}.jpg"
       if [[ "$dry_run" -eq 1 ]]; then
-        echo "[dry-run] photo: $photo -> $out_file"
+        if [[ "$normalize_photos" -eq 1 ]]; then
+          echo "[dry-run] photo (normalized): $photo -> $out_file"
+        else
+          original_ext="${photo##*.}"
+          echo "[dry-run] photo (original): $photo -> ${photos_out_dir}/${safe_rel%.*}.${original_ext,,}"
+        fi
       else
-        cp "$photo" "$out_file"
+        if [[ "$normalize_photos" -eq 1 ]]; then
+          ffmpeg -loglevel error -y -i "$photo" -vf "scale='if(gt(iw,${photo_max_width}),${photo_max_width},iw)':-2" -q:v 2 "$out_file"
+        else
+          original_ext="${photo##*.}"
+          out_file="${photos_out_dir}/${safe_rel%.*}.${original_ext,,}"
+          cp "$photo" "$out_file"
+        fi
         printf '%s,%s,%s,%s\n' "${out_file}" "photo" "${photo}" "" >> "$manifest_path"
       fi
       photo_count=$((photo_count + 1))

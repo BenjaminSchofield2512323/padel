@@ -74,6 +74,9 @@ data/
       val.json
 ```
 
+By default, `scripts/prepare_labeling_data.sh` now copies photos as normalized JPGs
+(auto-rotate + max width 2560) to reduce browser/tool decode issues during labeling.
+
 ## Fast iterative loop
 1. Label first batch.
 2. Train/fine-tune baseline.
